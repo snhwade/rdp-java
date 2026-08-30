@@ -1,0 +1,19 @@
+﻿{
+    "eventId":  "evt-3df2de0d18ed4adc887ecb5270af1cf4",
+    "correlationId":  "3df2de0d18ed4adc887ecb5270af1cf4",
+    "merchantId":  "M_LLM_TEST_001",
+    "eventTypeCode":  "EVT_PAY_APPLY",
+    "eventTimeMs":  1783089587000,
+    "status":  "SUCCESS",
+    "agentDecision":  "PASS",
+    "confidence":  0.75,
+    "reason":  "ä¸ä¸ææ æ¾èé£é©ä¿¡å·",
+    "engineDecision":  "PASS",
+    "divergence":  false,
+    "trace":  [
+
+              ],
+    "failReason":  null,
+    "createdAtMs":  1783089590000,
+    "completedAtMs":  1783089591000
+}

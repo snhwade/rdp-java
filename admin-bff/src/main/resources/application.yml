@@ -1,0 +1,95 @@
+﻿# =============================================================================
+# admin-bff | 本地端口 8080 | 管理端 BFF 聚合层
+# standalone（默认）：嵌入各后端 API，仅依赖 MySQL + Redis，无需 8081–8086 微服务
+# remote：HTTP 转发至各独立微服务
+# =============================================================================
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: admin-bff
+  datasource:
+    url: jdbc:mysql://localhost:3306/risk_decision_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+rdp:
+  integration:
+    mode: ${RDP_INTEGRATION_MODE:standalone}
+
+# remote 模式下游地址
+downstream:
+  rule-config: http://localhost:8082
+  rule-decision-engine: http://localhost:8083
+  indicator-store: http://localhost:8084
+  screening: http://localhost:8085
+  merchant-rating: http://localhost:8086
+  decision-gateway: http://localhost:8081
+  ai-training: http://localhost:8000
+
+indicator:
+  es:
+    host: ${ES_HOST:localhost}
+    port: ${ES_PORT:9200}
+    scheme: http
+  storage:
+    write-redis: false
+    write-es: false
+    read-redis: true
+    read-es: true
+  accumulate:
+    enabled: false
+
+security:
+  jwt:
+    secret: ${SECURITY_JWT_SECRET:rdp-local-dev-secret-key-must-be-long-enough-256bit!!}
+  crypto:
+    data-key: ${SECURITY_CRYPTO_DATA_KEY:rdp-local-dev-data-key-change-in-production}
+    key-id: ${SECURITY_CRYPTO_KEY_ID:local-config-key}
+
+agent:
+  llm:
+    provider: deepseek
+    base-url: https://api.deepseek.com
+    default-model: deepseek-v4-pro
+    api-key-env: DEEPSEEK_API_KEY
+    use-json-response-format: false
+    max-tokens: 1024
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    root: INFO
+    com.riskplatform: INFO

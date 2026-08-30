@@ -1,0 +1,89 @@
+# =============================================================================
+# indicator-store-service | 本地端口 8084 | 指标存储（依赖 Redis，可选 Kafka）
+# IDEA：运行配置「indicator-store-service :8084」
+# =============================================================================
+server:
+  port: ${SERVER_PORT:8084}
+
+spring:
+  application:
+    name: indicator-store-service
+  # standalone（默认）：指标定义读 MySQL；指标值仍用 Redis
+  datasource:
+    url: jdbc:mysql://localhost:3306/risk_decision_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+  # Kafka 消费（订单终态 → 指标累计）
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+# Elasticsearch 连接（第二阶段用 Docker 启动；未启动时读路由自动回退/降级，不阻断启动）
+indicator:
+  es:
+    host: ${ES_HOST:localhost}
+    port: ${ES_PORT:9200}
+    scheme: http
+  # 读写路由：可独立开关 Redis / ES（默认双写 + Redis 优先读、ES 回退）
+  storage:
+    write-redis: ${INDICATOR_WRITE_REDIS:true}
+    write-es: ${INDICATOR_WRITE_ES:true}
+    read-redis: ${INDICATOR_READ_REDIS:true}
+    read-es: ${INDICATOR_READ_ES:true}
+    # dedup-redis 未配置时默认与 write-redis 一致
+  # 指标累计链路（indicator.accumulate.mode）：
+  #   flink（默认）：Kafka → Flink → Kafka 切片增量 → 本服务消费写入 Redis/ES
+  #   service：Kafka 订单终态 → 本服务 @KafkaListener（轻量/降级）
+  accumulate:
+    enabled: true
+    mode: ${INDICATOR_ACCUMULATE_MODE:flink}
+    topic: order-final-state
+    group: indicator-accumulation
+    slice-topic: ${INDICATOR_SLICE_TOPIC:indicator-slice-updates}
+    slice-group: ${INDICATOR_SLICE_GROUP:indicator-slice-writer}
+    refresh-ms: 30000
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+
+rdp:
+  integration:
+    mode: ${RDP_INTEGRATION_MODE:standalone}
+
+# remote 模式才需要 rule-config HTTP
+downstream:
+  rule-config: ${RULE_CONFIG_URL:http://localhost:8082}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+# JWT 鉴权（R17.1/R17.2）：校验 rule-config-service 颁发的 HS256 令牌。
+# 密钥须与签发方一致；生产环境务必通过环境变量 SECURITY_JWT_SECRET 覆盖默认值。
+security:
+  jwt:
+    secret: ${SECURITY_JWT_SECRET:rdp-local-dev-secret-key-must-be-long-enough-256bit!!}
+
+logging:
+  level:
+    root: INFO
+    com.riskplatform: INFO

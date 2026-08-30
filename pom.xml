@@ -1,0 +1,241 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.riskplatform</groupId>
+    <artifactId>rdp-java</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>rdp-java</name>
+    <description>椋庢帶瀹炴椂鍐崇瓥骞冲彴 - Maven 澶氭ā鍧楃埗宸ョ▼锛堝叏寮€婧愪緷璧栵紝DDD 鍒嗗眰寰湇鍔★級</description>
+
+    <!--
+      妯″潡璇存槑锛?
+        - 7 涓?Spring Boot 3 鏈嶅姟锛圖DD 鍥涘眰 + 鍙惎鍔ㄤ富绫伙級
+        - 1 涓暟鎹紩鎿庢寚鏍囩疮璁℃ā鍧楋紙indicator-accumulation锛孎link 浣滀笟锛?
+        璇存槑锛歛i-training-service锛圥ython锛変笌 admin-console锛堝墠绔級涓虹嫭绔嬫妧鏈爤鐩綍锛?
+              涓嶇撼鍏?Maven 鍙嶅簲鍫嗭紙reactor锛夛紝鍚勮嚜鏈夌嫭绔嬫瀯寤哄伐鍏枫€?
+    -->
+        <modules>
+        <module>decision-gateway</module>
+        <module>rule-config-service</module>
+        <module>rule-decision-engine</module>
+        <module>indicator-store-service</module>
+        <module>screening-service</module>
+        <module>merchant-rating-service</module>
+        <module>admin-bff</module>
+    </modules>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <java.version>17</java.version>
+        <maven.compiler.release>17</maven.compiler.release>
+
+        <!-- 缁熶竴渚濊禆鐗堟湰锛堝叏閮ㄦ潵婧愪簬 Maven Central 鍏叡浠撳簱锛?-->
+        <spring-boot.version>3.3.5</spring-boot.version>
+        <mybatis-plus.version>3.5.7</mybatis-plus.version>
+        <springdoc.version>2.6.0</springdoc.version>
+        <aviator.version>5.4.3</aviator.version>
+        <resilience4j.version>2.2.0</resilience4j.version>
+        <elasticsearch-java.version>8.15.0</elasticsearch-java.version>
+        <flink.version>1.20.0</flink.version>
+        <maven-enforcer.version>3.5.0</maven-enforcer.version>
+        <jqwik.version>1.9.1</jqwik.version>
+        <jjwt.version>0.12.6</jjwt.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring Boot BOM锛氱粺涓€绠＄悊 web/validation/redis/kafka/flyway/mysql/caffeine/lombok/micrometer 绛夌増鏈?-->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- MyBatis-Plus锛圫pring Boot 3 starter锛?-->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+
+            <!-- springdoc-openapi锛圤penAPI 3 + Swagger UI, webmvc锛?-->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+
+            <!-- Aviator 琛ㄨ揪寮忓紩鎿?-->
+            <dependency>
+                <groupId>com.googlecode.aviator</groupId>
+                <artifactId>aviator</artifactId>
+                <version>${aviator.version}</version>
+            </dependency>
+
+            <!-- Resilience4j锛圫pring Boot 3锛?-->
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-spring-boot3</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+
+            <!-- Elasticsearch Java Client -->
+            <dependency>
+                <groupId>co.elastic.clients</groupId>
+                <artifactId>elasticsearch-java</artifactId>
+                <version>${elasticsearch-java.version}</version>
+            </dependency>
+
+            <!-- jqwik 灞炴€ф祴璇曟鏋讹紙寮€婧愶紝鐢ㄤ簬 P1-P8 姝ｇ‘鎬у睘鎬э級 -->
+            <dependency>
+                <groupId>net.jqwik</groupId>
+                <artifactId>jqwik</artifactId>
+                <version>${jqwik.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- JJWT锛圝WT 绛惧彂/鏍￠獙锛孒S256锛涚敤浜庡悇鏈嶅姟鏃犵姸鎬侀壌鏉?R17.1/R17.2锛?-->
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt.version}</version>
+                <scope>runtime</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt.version}</version>
+                <scope>runtime</scope>
+            </dependency>
+
+            <!-- Apache Flink BOM 鍏抽敭渚濊禆锛堟祦璁＄畻浣滀笟妯″潡浣跨敤锛?-->
+            <dependency>
+                <groupId>org.apache.flink</groupId>
+                <artifactId>flink-streaming-java</artifactId>
+                <version>${flink.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.flink</groupId>
+                <artifactId>flink-clients</artifactId>
+                <version>${flink.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.flink</groupId>
+                <artifactId>flink-connector-base</artifactId>
+                <version>${flink.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.flink</groupId>
+                <artifactId>flink-connector-kafka</artifactId>
+                <version>3.2.0-1.19</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.flink</groupId>
+                <artifactId>flink-runtime-web</artifactId>
+                <version>${flink.version}</version>
+            </dependency>
+                    <dependency>
+                <groupId>com.riskplatform</groupId>
+                <artifactId>commons-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>${spring-boot.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.13.0</version>
+                    <configuration>
+                        <release>${maven.compiler.release}</release>
+                        <!-- 淇濈暀鏂规硶鍙傛暟鍚嶏紝浣?Spring MVC 鐨?@PathVariable/@RequestParam
+                             鍦ㄤ笉鏄惧紡鎸囧畾 name 鏃朵粛鑳芥寜鍙傛暟鍚嶇粦瀹氾紙Spring Boot 鐖?POM 榛樿寮€鍚級銆?-->
+                        <parameters>true</parameters>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>${maven-enforcer.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.2.5</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>3.2.5</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <!--
+          绉佹湁渚濊禆鎷︽埅锛圧14.5 / R14.3 / R14.4锛夛細
+          maven-enforcer-plugin 鐨?bannedDependencies 瑙勫垯绂佹浠讳綍绉佹湁浠撳簱鍧愭爣锛?
+          瑕嗙洊鏁翠釜 com.xgd.* 鍛藉悕绌洪棿锛堝惈浠绘剰瀛愬垎缁勪笌浼犻€掍緷璧栵級锛?
+          鍛戒腑鍗虫瀯寤哄け璐ュ苟鎶ュ憡璇ュ潗鏍囥€傜埗宸ョ▼澹版槑锛屾墍鏈夊瓙妯″潡缁ф壙鎵ц銆?
+          璇存槑锛歟xclude 妯″紡涓殑 `*` 鍙法 `.` 鍖归厤浠绘剰瀛楃锛涘悓鏃舵樉寮忓垪鍑烘牴鍒嗙粍 `com.xgd`
+          浠ヨ鐩栧潗鏍囨伆涓烘牴鍒嗙粍鏈韩锛堟棤瀛愬垎缁勶級鐨勬儏褰€?
+        -->
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-no-private-dependencies</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <phase>validate</phase>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <!-- com.xgd 绉佹湁鍛藉悕绌洪棿锛氭牴鍒嗙粍鍙婂叾浠绘剰瀛愬垎缁勭殑鍏ㄩ儴鍧愭爣 -->
+                                        <exclude>com.xgd</exclude>
+                                        <exclude>com.xgd.*</exclude>
+                                    </excludes>
+                                    <message>妫€娴嬪埌绉佹湁浠撳簱渚濊禆锛坈om.xgd.*锛夛紝绂佹浣跨敤锛圧14.5锛夈€傝鏀圭敤寮€婧愭浛浠ｄ緷璧栥€?/message>
+                                    <searchTransitive>true</searchTransitive>
+                                </bannedDependencies>
+                            </rules>
+                            <fail>true</fail>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!--
+      浠撳簱绛栫暐锛氫笉澹版槑浠讳綍绉佹湁浠撳簱銆?
+      渚濊禆涓€寰嬭В鏋愯嚜 Maven Central锛堟垨鍏跺叕鍏遍暅鍍忥級锛屾弧瓒?R14.3/R14.4 鍏ㄥ紑婧愮害鏉熴€?
+      绉佹湁渚濊禆鎷︽埅锛坢aven-enforcer-plugin bannedDependencies锛岃鐩?com.xgd.*锛?
+      宸插湪涓婃柟 build/plugins 鎺ュ叆锛屾墍鏈夊瓙妯″潡缁ф壙鎵ц锛圧14.5锛夈€?
+    -->
+</project>
+
+

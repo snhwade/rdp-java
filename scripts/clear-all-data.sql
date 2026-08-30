@@ -1,0 +1,62 @@
+-- 清空业务数据（保留 sys_user 与 flyway_schema_history 版本迁移记录）
+-- 重复种子脚本 R__* 记录会由 clear-all-data.ps1 删除以便重启后重跑
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+TRUNCATE TABLE ai_decision_record;
+TRUNCATE TABLE ai_training_job;
+TRUNCATE TABLE approval_request;
+TRUNCATE TABLE asset_version;
+TRUNCATE TABLE audit_log;
+TRUNCATE TABLE decision_flow_version;
+TRUNCATE TABLE decision_flow;
+TRUNCATE TABLE decision_log;
+TRUNCATE TABLE decision_matrix;
+TRUNCATE TABLE decision_strategy_output;
+TRUNCATE TABLE decision_table;
+TRUNCATE TABLE decision_tag;
+TRUNCATE TABLE decision_tree;
+TRUNCATE TABLE derived_field;
+TRUNCATE TABLE dry_run_job;
+TRUNCATE TABLE engine_decision_record;
+TRUNCATE TABLE enum_value;
+TRUNCATE TABLE enum_lib;
+TRUNCATE TABLE event_field;
+TRUNCATE TABLE event_type;
+TRUNCATE TABLE field_library;
+TRUNCATE TABLE indicator_definition;
+TRUNCATE TABLE indicator_group;
+TRUNCATE TABLE list_attr_def;
+TRUNCATE TABLE list_entry;
+TRUNCATE TABLE list_library;
+TRUNCATE TABLE list_dimension;
+TRUNCATE TABLE list_record;
+TRUNCATE TABLE logical_indicator_member;
+TRUNCATE TABLE logical_indicator;
+TRUNCATE TABLE merchant_rating;
+TRUNCATE TABLE org;
+TRUNCATE TABLE rating_grade_band;
+TRUNCATE TABLE rating_item;
+TRUNCATE TABLE rating_model_version;
+TRUNCATE TABLE rating_model;
+TRUNCATE TABLE risk_level;
+TRUNCATE TABLE risk_order;
+TRUNCATE TABLE risk_type;
+TRUNCATE TABLE rule_dynamic_score;
+TRUNCATE TABLE rule_v2;
+TRUNCATE TABLE rule_package_rule;
+TRUNCATE TABLE rule_package_score_band;
+TRUNCATE TABLE rule_package_event;
+TRUNCATE TABLE rule_package_scenario;
+TRUNCATE TABLE rule_package;
+TRUNCATE TABLE rule_strategy;
+TRUNCATE TABLE rule;
+TRUNCATE TABLE scenario_event;
+TRUNCATE TABLE scenario;
+TRUNCATE TABLE score_band_strategy;
+TRUNCATE TABLE scorecard;
+TRUNCATE TABLE screening_result;
+TRUNCATE TABLE screening_list;
+TRUNCATE TABLE strategy_def;
+
+SET FOREIGN_KEY_CHECKS = 1;

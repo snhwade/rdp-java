@@ -1,0 +1,96 @@
+﻿# =============================================================================
+# decision-gateway | 本地端口 8081 | 业务系统入口（Postman 调这里）
+# standalone（默认）：MySQL + Redis + 内嵌引擎，不依赖其他微服务 HTTP
+# remote：经 HTTP 调用 rule-config / engine / screening / indicator-store
+# =============================================================================
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: decision-gateway
+  config:
+    import: optional:classpath:application-local.yml
+  datasource:
+    url: jdbc:mysql://localhost:3306/risk_decision_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+
+rdp:
+  integration:
+    mode: ${RDP_INTEGRATION_MODE:standalone}
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+# remote 模式下游地址
+downstream:
+  rule-config: http://localhost:8082
+  rule-decision-engine: http://localhost:8083
+  screening: http://localhost:8085
+  indicator-store: http://localhost:8084
+
+# 暴露 Prometheus 指标端点（R15.2）
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+# JWT 鉴权（R17.1/R17.2）：校验 rule-config-service 颁发的 HS256 令牌。
+# 密钥须与签发方一致；生产环境务必通过环境变量 SECURITY_JWT_SECRET 覆盖默认值。
+security:
+  jwt:
+    secret: ${SECURITY_JWT_SECRET:rdp-local-dev-secret-key-must-be-long-enough-256bit!!}
+  risk-events:
+    api-key: ${SECURITY_RISK_EVENTS_API_KEY:}
+    header: ${SECURITY_RISK_EVENTS_API_KEY_HEADER:X-Risk-Api-Key}
+  # 敏感字段落库加密（R17.4）：交易主体名称/证件号/事件上下文等以 AES-256-GCM 加密落库。
+  # data-key 为数据密钥种子，本地默认仅供开发演示；生产须经环境变量注入，或改用 KMS/Vault KeyProvider。
+  crypto:
+    data-key: ${SECURITY_CRYPTO_DATA_KEY:rdp-local-dev-data-key-change-in-production}
+    key-id: ${SECURITY_CRYPTO_KEY_ID:local-config-key}
+
+logging:
+  level:
+    root: INFO
+    com.riskplatform: INFO
+
+# AI Agent LLM（DeepSeek OpenAI 兼容接口；密钥见 application-local.yml 或 DEEPSEEK_API_KEY）
+agent:
+  llm:
+    provider: deepseek
+    base-url: https://api.deepseek.com
+    default-model: deepseek-v4-pro
+    api-key-env: DEEPSEEK_API_KEY
+    use-json-response-format: false
+    max-tokens: 1024
+    default-temperature: 0.2
+    default-system-prompt: >
+      你是资深支付风控 AI Agent。通过 call_tool 收集证据，基于 toolTrace 原始数据自主推理决策；
+      禁止使用固定规则表或固定工具顺序替代推理。当前为影子模式，决策供对账参考。
+  orchestration:
+    default-llm-mode: ORCHESTRATED
+    default-max-steps: 8
+    # SHADOW | ADVISORY | STRICT | OVERRIDE（见 docs/enhancement-plan.md T1）
+    default-adoption-mode: SHADOW
+    ai-sync-timeout-ms: 8000
+    # LLM 不可用时是否允许启发式回退；生产建议 false（见 enhancement-plan T5）
+    allow-heuristic-fallback: true

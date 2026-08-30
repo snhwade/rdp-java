@@ -1,0 +1,40 @@
+# =============================================================================
+# merchant-rating-service | 本地端口 8086 | 商户评级服务
+# IDEA：运行配置「merchant-rating-service :8086」
+# =============================================================================
+server:
+  port: ${SERVER_PORT:8086}
+
+spring:
+  application:
+    name: merchant-rating-service
+  # 本地集成环境：连接本机 MySQL（root/root）
+  datasource:
+    url: jdbc:mysql://localhost:3306/risk_decision_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+# JWT 鉴权（R17.1/R17.2）：校验 rule-config-service 颁发的 HS256 令牌。
+# 密钥须与签发方一致；生产环境务必通过环境变量 SECURITY_JWT_SECRET 覆盖默认值。
+security:
+  jwt:
+    secret: ${SECURITY_JWT_SECRET:rdp-local-dev-secret-key-must-be-long-enough-256bit!!}
+
+logging:
+  level:
+    root: INFO
+    com.riskplatform: INFO

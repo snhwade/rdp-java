@@ -1,0 +1,52 @@
+# =============================================================================
+# screening-service | 本地端口 8085 | 名单筛查服务
+# IDEA：运行配置「screening-service :8085」
+# =============================================================================
+server:
+  port: ${SERVER_PORT:8085}
+
+spring:
+  application:
+    name: screening-service
+  # 本地集成环境：连接本机 MySQL（root/root），复用 rule-config 已建的表（含 list_record，不在此重复 Flyway）
+  datasource:
+    url: jdbc:mysql://localhost:3306/risk_decision_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+# JWT 鉴权（R17.1/R17.2）：校验 rule-config-service 颁发的 HS256 令牌。
+# 密钥须与签发方一致；生产环境务必通过环境变量 SECURITY_JWT_SECRET 覆盖默认值。
+security:
+  jwt:
+    secret: ${SECURITY_JWT_SECRET:rdp-local-dev-secret-key-must-be-long-enough-256bit!!}
+  # 敏感字段落库加密（R17.4）：名单条目（交易主体名称/证件号）以 AES-256-GCM 加密落库。
+  # data-key 为数据密钥种子，本地默认仅供开发演示；生产须经环境变量注入，或改用 KMS/Vault KeyProvider。
+  crypto:
+    data-key: ${SECURITY_CRYPTO_DATA_KEY:rdp-local-dev-data-key-change-in-production}
+    key-id: ${SECURITY_CRYPTO_KEY_ID:local-config-key}
+
+logging:
+  level:
+    root: INFO
+    com.riskplatform: INFO

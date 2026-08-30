@@ -1,0 +1,76 @@
+# =============================================================================
+# rule-decision-engine | 本地端口 8083 | 规则包/决策流执行引擎
+# IDEA：运行配置「rule-decision-engine :8083」
+# =============================================================================
+server:
+  port: ${SERVER_PORT:8083}
+
+spring:
+  application:
+    name: rule-decision-engine
+  # standalone（默认）：规则/绑定读 MySQL，指标读 Redis，不依赖其他微服务 HTTP
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+  datasource:
+    url: jdbc:mysql://localhost:3306/risk_decision_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  # Kafka（订阅配置变更广播，刷新本地缓存）
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    consumer:
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+# standalone | remote — remote 时经 HTTP 拉 rule-config / indicator-store
+rdp:
+  integration:
+    mode: ${RDP_INTEGRATION_MODE:standalone}
+  config-cache:
+    # 本地无 Kafka 时保持 false；有 Kafka 时设 CONFIG_CACHE_KAFKA_ENABLED=true
+    kafka-enabled: ${CONFIG_CACHE_KAFKA_ENABLED:false}
+
+config:
+  change-topic: ${CONFIG_CHANGE_TOPIC:rule-config-change}
+
+downstream:
+  rule-config: ${RULE_CONFIG_URL:http://localhost:8082}
+  indicator-store: ${INDICATOR_STORE_URL:http://localhost:8084}
+  ai-training: ${AI_TRAINING_URL:http://localhost:8000}
+  screening: ${SCREENING_URL:http://localhost:8085}
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+# JWT 鉴权（R17.1/R17.2）：校验 rule-config-service 颁发的 HS256 令牌。
+# 密钥须与签发方一致；生产环境务必通过环境变量 SECURITY_JWT_SECRET 覆盖默认值。
+security:
+  jwt:
+    secret: ${SECURITY_JWT_SECRET:rdp-local-dev-secret-key-must-be-long-enough-256bit!!}
+
+logging:
+  level:
+    root: INFO
+    com.riskplatform: INFO

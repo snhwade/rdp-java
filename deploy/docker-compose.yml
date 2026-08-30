@@ -1,0 +1,144 @@
+# 风控实时决策平台 - 本地集成依赖（ES + Kafka + Flink 集群）
+# MySQL 与 Redis 使用本机已安装实例，不在此编排。
+#
+# 开机自启：所有服务配 restart: unless-stopped，打开 Docker Desktop 即自动拉起；
+#          flink-job-submitter 会在 JobManager 就绪后自动（幂等）提交指标累计作业。
+#          （由用户手动打开 Docker，无需设置 Docker Desktop 开机自启）
+#
+# 启动： docker compose -f deploy/docker-compose.yml up -d
+# 停止： docker compose -f deploy/docker-compose.yml down       （保留数据卷）
+# 清空： docker compose -f deploy/docker-compose.yml down -v    （含数据卷）
+# 更新 Flink 作业：替换 deploy/flink-job/indicator-job.jar 后
+#                  docker compose restart flink-job-submitter（需先取消旧作业）
+# Flink Web UI： http://localhost:8088
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: rdp-elasticsearch
+    restart: unless-stopped          # 开机自启：Docker 启动时自动拉起（手动 stop 后不自启）
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false        # 本地集成关闭安全，简化连接
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data    # 持久化 ES 数据
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  kafka:
+    image: bitnami/kafka:3.7
+    container_name: rdp-kafka
+    restart: unless-stopped          # 开机自启
+    environment:
+      # KRaft 单节点模式（无需 Zookeeper）
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      # 双 broker 监听：HOST(9092) 供宿主机服务（advertised localhost:9092）；
+      # INTERNAL(29092) 供 Docker 网络内容器（如 Flink，advertised rdp-kafka:29092）
+      - KAFKA_CFG_LISTENERS=HOST://:9092,INTERNAL://:29092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=HOST://localhost:9092,INTERNAL://rdp-kafka:29092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,HOST:PLAINTEXT,INTERNAL:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka-data:/bitnami/kafka      # 持久化 KRaft 元数据/日志，重启不丢 topic
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  # ---------------------------------------------------------------------
+  # Flink 集群（方案B：1 JobManager + 3 TaskManager），对标主流实时反欺诈流计算架构。
+  # 与方案A（indicator-store @KafkaListener）共享累计语义，产出相同的 Redis 切片。
+  # 提交作业：deploy/submit-flink-job.ps1（上传 fat jar 至 JobManager）。
+  # ---------------------------------------------------------------------
+  flink-jobmanager:
+    image: flink:1.20-java17
+    container_name: rdp-flink-jobmanager
+    restart: unless-stopped          # 开机自启
+    ports:
+      - "8088:8081"          # Flink Web UI（宿主 8088 -> 容器 8081，避让网关 8081）
+    command: jobmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        parallelism.default: 3
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - kafka
+
+  flink-taskmanager:
+    image: flink:1.20-java17
+    command: taskmanager
+    restart: unless-stopped          # 开机自启
+    deploy:
+      replicas: 3            # 3 个 TaskManager 节点
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 2
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - flink-jobmanager
+
+  # ---------------------------------------------------------------------
+  # 作业自动提交器：随 Docker 自启，等 JobManager 就绪后自动提交指标累计作业。
+  # 幂等：提交前检查是否已有同名 RUNNING 作业，避免重启后重复提交。
+  # 作业 jar 通过卷挂载（deploy/flink-job/indicator-job.jar）。
+  # 更新作业：替换该 jar 后 `docker compose restart flink-job-submitter`。
+  # ---------------------------------------------------------------------
+  flink-job-submitter:
+    image: flink:1.20-java17
+    container_name: rdp-flink-job-submitter
+    restart: unless-stopped          # 开机自启（提交后自身退出，由重启策略下次开机再跑）
+    depends_on:
+      - flink-jobmanager
+      - kafka
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./flink-job/indicator-job.jar:/job/indicator-job.jar:ro
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        echo "[submitter] 等待 JobManager 就绪...";
+        until curl -fs http://flink-jobmanager:8081/overview >/dev/null 2>&1; do sleep 3; done;
+        echo "[submitter] JobManager 就绪，检查既有作业...";
+        running=$$(curl -fs http://flink-jobmanager:8081/jobs | grep -o '"status":"RUNNING"' | wc -l || echo 0);
+        if [ "$$running" -gt 0 ]; then
+          echo "[submitter] 已有 RUNNING 作业，跳过提交（幂等）。";
+        else
+          echo "[submitter] 提交指标累计作业...";
+          flink run -d -m flink-jobmanager:8081 /job/indicator-job.jar \
+            --kafka rdp-kafka:29092 --redis-host host.docker.internal --redis-port 6379 \
+            --rule-config http://host.docker.internal:8082 --definitions-refresh-ms 30000 \
+            --group flink-acc-e2e --offsets latest && echo "[submitter] 提交完成。";
+        fi;
+        echo "[submitter] 保持存活（作为哨兵；Docker 重启时会重新执行幂等提交）。";
+        sleep infinity;
+
+volumes:
+  kafka-data:        # Kafka KRaft 元数据/日志持久化（重启不丢 topic）
+  es-data:           # Elasticsearch 数据持久化
